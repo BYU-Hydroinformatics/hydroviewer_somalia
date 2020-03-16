@@ -27,33 +27,13 @@ function init_map() {
 		source: new ol.source.BingMaps({
 			key: 'eLVu8tDRPeQqmBlKAjcw~82nOqZJe2EpKmqd-kQrSmg~AocUZ43djJ-hMBHQdYDyMbT-Enfsk0mtUIGws1WeDuOvjY4EXCH-9OK3edNLDgkc',
 			imagerySet: 'Road'
-//			imagerySet: 'AerialWithLabels'
 		})
 	});
 
-//	var streams = new ol.layer.Image({
-//		source: new ol.source.ImageWMS({
-//			url: 'https://tethys.byu.edu/geoserver/colombia_hydroviewer/wms',
-//			params: { 'LAYERS': 'south_america-colombia-drainage_line' },
-//			serverType: 'geoserver',
-//			crossOrigin: 'Anonymous'
-//		}),
-//		opacity: 0.5
-//	});
-//
-//	var stations = new ol.layer.Image({
-//		source: new ol.source.ImageWMS({
-//			url: 'https://tethys.byu.edu/geoserver/colombia_hydroviewer/wms',
-//			params: { 'LAYERS': 'IDEAM_Stations' },
-//			serverType: 'geoserver',
-//			crossOrigin: 'Anonymous'
-//		})
-//	});
-//
 	var streams = new ol.layer.Image({
 		source: new ol.source.ImageWMS({
-			url: 'http://geoserver.org/somalia_rivers/wms',
-			params: { 'LAYERS': 'somalia_rivers:Somalia' },
+			url: 'https://geoserver.hydroshare.org/geoserver/wms',
+			params: { 'LAYERS': 'HS-cc1b93f1d65440aca895787118ed46f1:Somolia' },
 			serverType: 'geoserver',
 			crossOrigin: 'Anonymous'
 		}),
@@ -62,8 +42,8 @@ function init_map() {
 
 	var stations = new ol.layer.Image({
 		source: new ol.source.ImageWMS({
-			url: 'http://localhost:8080/geoserver/somalia_rivers/wms',
-			params: { 'LAYERS': 'somalia_points' },
+			url: 'https://geoserver.hydroshare.org/geoserver/wms',
+			params: { 'LAYERS': 'HS-cc1b93f1d65440aca895787118ed46f1:SomoliaPoints' },
 			serverType: 'geoserver',
 			crossOrigin: 'Anonymous'
 		})
@@ -81,8 +61,7 @@ function init_map() {
 
 }
 
-//let ajax_url = 'https://tethys.byu.edu/geoserver/colombia_hydroviewer/wfs?request=GetCapabilities';
-let ajax_url = 'http://localhost:8080/geoserver/somalia_river/wfs?request=GetCapabilities';
+let ajax_url = 'https://geoserver.hydroshare.org/geoserver/wfs?request=GetCapabilities';
 
 let capabilities = $.ajax(ajax_url, {
 	type: 'GET',
