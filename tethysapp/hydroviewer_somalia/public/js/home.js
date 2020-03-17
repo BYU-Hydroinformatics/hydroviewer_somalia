@@ -74,7 +74,7 @@ let capabilities = $.ajax(ajax_url, {
 	success: function() {
 		let x = capabilities.responseText
 		.split('<FeatureTypeList>')[1]
-		.split('colombia_hydroviewer:south_america-colombia-drainage_line')[1]
+		.split('HS-cc1b93f1d65440aca895787118ed46f1:SomoliaPoints')[1]
 		.split('LatLongBoundingBox ')[1]
 		.split('/></FeatureType>')[0];
 
@@ -726,8 +726,8 @@ $(document).ready(function(){
     $("#make-table").click(function(){
         //console.log('Make Table Event Triggered');
         var model = $('#model option:selected').text();
-        var watershed = 'south_america' //OJO buscar como hacerla generica
-        var subbasin = 'continental' //OJO buscar como hacerla generica
+        var watershed = 'africa' //OJO buscar como hacerla generica
+        var subbasin = 'geoglows' //OJO buscar como hacerla generica
         var startdate = '';
         let xName = $("#Station-Name-Tab")
         let xCode = $("#Station-Code-Tab")
