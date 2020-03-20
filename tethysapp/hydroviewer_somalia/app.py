@@ -30,65 +30,45 @@ class HydroviewerSomalia(TethysAppBase):
                 controller='hydroviewer_somalia.controllers.home'
             ),
             UrlMap(
-                name='get_discharge_data',
-                url='get-discharge-data',
-                controller='hydroviewer_somalia.controllers.get_discharge_data'
-            ),
+                name='get-available-dates',
+                url='get-available-dates',
+                controller='hydroviewer_somalia.controllers.get_available_dates'),
             UrlMap(
-                name='get_simulated_data',
-                url='get-simulated-data',
-                controller='hydroviewer_somalia.controllers.get_simulated_data'
-            ),
+                name='get-time-series',
+                url='get-time-series',
+                controller='hydroviewer_somalia.controllers.get_time_series'),
             UrlMap(
-                name='get_hydrographs',
-                url='get-hydrographs',
-                controller='hydroviewer_somalia.controllers.get_hydrographs'
-            ),
+                name='get-return-periods',
+                url='get-return-periods',
+                controller='hydroviewer_somalia.controllers.get_return_periods'),
+            UrlMap(
+                name='get-historic-data',
+                url='get-historic-data',
+                controller='hydroviewer_somalia.controllers.get_historic_data'),
             UrlMap(
                 name='get_dailyAverages',
                 url='get-dailyAverages',
-                controller='hydroviewer_somalia.controllers.get_dailyAverages'
-            ),
+                controller='hydroviewer_somalia.controllers.get_dailyAverages'),
             UrlMap(
                 name='get_monthlyAverages',
                 url='get-monthlyAverages',
-                controller='hydroviewer_somalia.controllers.get_monthlyAverages'
-            ),
+                controller='hydroviewer_somalia.controllers.get_monthlyAverages'),
             UrlMap(
-                name='get_scatterPlot',
-                url='get-scatterPlot',
-                controller='hydroviewer_somalia.controllers.get_scatterPlot'
-            ),
+                name='get-flow-duration-curve',
+                url='get-flow-duration-curve',
+                controller='hydroviewer_somalia.controllers.get_flow_duration_curve'),
             UrlMap(
-                name='get_scatterPlotLogScale',
-                url='get-scatterPlotLogScale',
-                controller='hydroviewer_somalia.controllers.get_scatterPlotLogScale'
-            ),
+                name='get_historic_data_csv',
+                url='get-historic-data-csv',
+                controller='hydroviewer_somalia.controllers.get_historic_data_csv'),
             UrlMap(
-                name='get_volumeAnalysis',
-                url='get-volumeAnalysis',
-                controller='hydroviewer_somalia.controllers.get_volumeAnalysis'
-            ),
+                name='get_forecast_data_csv',
+                url='get-forecast-data-csv',
+                controller='hydroviewer_somalia.controllers.get_forecast_data_csv'),
             UrlMap(
-                name='volume_table_ajax',
-                url='volume-table-ajax',
-                controller='hydroviewer_somalia.controllers.volume_table_ajax'
-            ),
-            UrlMap(
-                name='make_table_ajax',
-                url='make-table-ajax',
-                controller='hydroviewer_somalia.controllers.make_table_ajax'
-            ),
-            UrlMap(
-                name='get_observed_discharge_csv',
-                url='get-observed-discharge-csv',
-                controller='hydroviewer_somalia.controllers.get_observed_discharge_csv'
-            ),
-            UrlMap(
-                name='get_simulated_discharge_csv',
-                url='get-simulated-discharge-csv',
-                controller='hydroviewer_somalia.controllers.get_simulated_discharge_csv'
-            ),
+                name='forecastpercent',
+                url='forecastpercent',
+                controller='hydroviewer_somalia.controllers.forecastpercent'),
         )
 
         return url_maps

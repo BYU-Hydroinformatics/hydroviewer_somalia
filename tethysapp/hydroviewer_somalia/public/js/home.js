@@ -1,18 +1,3 @@
-// Getting the csrf token
-let csrftoken = Cookies.get('csrftoken');
-
-function csrfSafeMethod(method) {
-    // these HTTP methods do not require CSRF protection
-    return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
-}
-
-$.ajaxSetup({
-    beforeSend: function(xhr, settings) {
-        if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
-            xhr.setRequestHeader("X-CSRFToken", csrftoken);
-        }
-    }
-});
 
 var feature_layer;
 var current_layer;
@@ -94,14 +79,167 @@ let capabilities = $.ajax(ajax_url, {
 	}
 });
 
-function get_discharge_info (stationcode, stationname) {
-	$('#observed-loading-Q').removeClass('hidden');
+function get_available_dates(watershed, subbasin, comid) {
+	$.ajax({
+		type: 'GET',
+		url: 'get-available-dates/',
+		dataType: 'json',
+		data: {
+			'watershed': watershed,
+			'subbasin': subbasin,
+			'comid': comid
+		},
+		error: function() {
+			$('#dates').html(
+				'<p class="alert alert-danger" style="text-align: center"><strong>An error occurred while retrieving the available dates</strong></p>'
+			);
+
+			setTimeout(function() {
+				$('#dates').addClass('hidden')
+			}, 5000);
+        },
+        success: function(dates) {
+        	datesParsed = JSON.parse(dates.available_dates);
+        	$('#datesSelect').empty();
+
+        	$.each(datesParsed, function(i, p) {
+        		var val_str = p.slice(1).join();
+        		$('#datesSelect').append($('<option></option>').val(val_str).html(p[0]));
+        	});
+        }
+    });
+}
+
+function get_return_periods(watershed, subbasin, comid) {
     $.ajax({
-        url: 'get-discharge-data',
         type: 'GET',
-        data: {'stationcode' : stationcode, 'stationname': stationname},
-        error: function () {
-            $('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the observed data</strong></p>');
+        url: 'get-return-periods/',
+        dataType: 'json',
+        data: {
+            'watershed': watershed,
+            'subbasin': subbasin,
+            'comid': comid
+        },
+        error: function() {
+            $('#info').html(
+                '<p class="alert alert-warning" style="text-align: center"><strong>Return Periods are not available for this dataset.</strong></p>'
+            );
+
+            $('#info').removeClass('hidden');
+
+            setTimeout(function() {
+                $('#info').addClass('hidden')
+            }, 5000);
+        },
+        success: function(data) {
+            $("#container").highcharts().yAxis[0].addPlotBand({
+                from: parseFloat(data.return_periods.twenty),
+                to: parseFloat(data.return_periods.max),
+                color: 'rgba(128,0,128,0.4)',
+                id: '20-yr',
+                label: {
+                    text: '20-yr',
+                    align: 'right'
+                }
+            });
+            $("#container").highcharts().yAxis[0].addPlotBand({
+                from: parseFloat(data.return_periods.ten),
+                to: parseFloat(data.return_periods.twenty),
+                color: 'rgba(255,0,0,0.3)',
+                id: '10-yr',
+                label: {
+                    text: '10-yr',
+                    align: 'right'
+                }
+            });
+            $("#container").highcharts().yAxis[0].addPlotBand({
+                from: parseFloat(data.return_periods.two),
+                to: parseFloat(data.return_periods.ten),
+                color: 'rgba(255,255,0,0.3)',
+                id: '2-yr',
+                label: {
+                    text: '2-yr',
+                    align: 'right'
+                }
+            });
+        }
+    });
+}
+
+function get_time_series(watershed, subbasin, comid, startdate) {
+    $('#forecast-loading').removeClass('hidden');
+    $('#forecast-chart').addClass('hidden');
+    $('#dates').addClass('hidden');
+    $.ajax({
+        type: 'GET',
+        url: 'get-time-series/',
+        data: {
+            'watershed': watershed,
+            'subbasin': subbasin,
+            'comid': comid,
+            'startdate': startdate
+        },
+        error: function() {
+            $('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the forecast</strong></p>');
+            $('#info').removeClass('hidden');
+
+            setTimeout(function() {
+                $('#info').addClass('hidden')
+            }, 5000);
+        },
+        success: function(data) {
+            if (!data.error) {
+                $('#forecast-loading').addClass('hidden');
+                $('#dates').removeClass('hidden');
+                //$loading.addClass('hidden');
+                $('#forecast-chart').removeClass('hidden');
+                $('#forecast-chart').html(data);
+
+                //resize main graph
+                Plotly.Plots.resize($("#forecast-chart .js-plotly-plot")[0]);
+
+                var params = {
+                    watershed_name: watershed,
+                    subbasin_name: subbasin,
+                    comid: comid,
+                    startdate: startdate,
+                };
+
+                $('#submit-download-forecast').attr({
+                    target: '_blank',
+                    href: 'get-forecast-data-csv?' + jQuery.param(params)
+                });
+
+                $('#download_forecast').removeClass('hidden');
+
+            } else if (data.error) {
+                $('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the forecast</strong></p>');
+                $('#info').removeClass('hidden');
+
+                setTimeout(function() {
+                    $('#info').addClass('hidden')
+                }, 5000);
+            } else {
+                $('#info').html('<p><strong>An unexplainable error occurred.</strong></p>').removeClass('hidden');
+            }
+        }
+    });
+}
+
+function get_historic_data(watershed, subbasin, comid, startdate) {
+	$('#historical-loading').removeClass('hidden');
+	m_downloaded_historical_streamflow = true;
+    $.ajax({
+        url: 'get-historic-data',
+        type: 'GET',
+        data: {
+            'watershed': watershed,
+            'subbasin': subbasin,
+            'comid': comid,
+            'startdate': startdate
+        },
+        error: function() {
+            $('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the historic data</strong></p>');
             $('#info').removeClass('hidden');
 
             setTimeout(function () {
@@ -110,153 +248,155 @@ function get_discharge_info (stationcode, stationname) {
         },
         success: function (data) {
             if (!data.error) {
-                $('#observed-loading-Q').addClass('hidden');
+                $('#historical-loading').addClass('hidden');
                 $('#dates').removeClass('hidden');
 //                $('#obsdates').removeClass('hidden');
                 $loading.addClass('hidden');
-                $('#observed-chart-Q').removeClass('hidden');
-                $('#observed-chart-Q').html(data);
+                $('#historical-chart').removeClass('hidden');
+                $('#historical-chart').html(data);
 
                 //resize main graph
-                Plotly.Plots.resize($("#observed-chart-Q .js-plotly-plot")[0]);
+                Plotly.Plots.resize($("#historical-chart .js-plotly-plot")[0]);
 
                 var params = {
-                    stationcode: stationcode,
-                    stationname: stationname,
+                    watershed: watershed,
+                	subbasin: subbasin,
+                	comid: comid,
+                	daily: false
                 };
 
-                $('#submit-download-observed-discharge').attr({
+                $('#submit-download-historical').attr({
                     target: '_blank',
-                    href: 'get-observed-discharge-csv?' + jQuery.param(params)
+                    href: 'get-historic-data-csv?' + jQuery.param(params)
                 });
 
-                $('#download_observed_discharge').removeClass('hidden');
+                $('#download_historical').removeClass('hidden');
 
+           		 } else if (data.error) {
+           		 	$('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the Historical Data</strong></p>');
+           		 	$('#info').removeClass('hidden');
+
+           		 	setTimeout(function() {
+           		 		$('#info').addClass('hidden')
+           		 	}, 5000);
+           		 } else {
+           		 	$('#info').html('<p><strong>An unexplainable error occurred.</strong></p>').removeClass('hidden');
+           		 }
+       		}
+    });
+};
+
+
+function get_flow_duration_curve(watershed, subbasin, comid, startdate) {
+    $('#fdc-view-file-loading').removeClass('hidden');
+    m_downloaded_flow_duration = true;
+    $.ajax({
+        type: 'GET',
+        url: 'get-flow-duration-curve',
+        data: {
+            'watershed': watershed,
+            'subbasin': subbasin,
+            'comid': comid,
+            'startdate': startdate
+        },
+        success: function(data) {
+            if (!data.error) {
+                $('#fdc-loading').addClass('hidden');
+                $('#fdc-chart').removeClass('hidden');
+                $('#fdc-chart').html(data);
             } else if (data.error) {
-            	$('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the Observed Data</strong></p>');
-            	$('#info').removeClass('hidden');
+                $('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the historic data</strong></p>');
+                $('#info').removeClass('hidden');
 
-            	setTimeout(function() {
-            		$('#info').addClass('hidden')
+                setTimeout(function() {
+                    $('#info').addClass('hidden')
                 }, 5000);
-
             } else {
-            	$('#info').html('<p><strong>An unexplainable error occurred.</strong></p>').removeClass('hidden');
+                $('#info').html('<p><strong>An unexplainable error occurred.</strong></p>').removeClass('hidden');
             }
         }
     });
 };
 
-function get_simulated_data (watershed, subbasin, streamcomid, stationcode, stationname) {
-	$('#simulated-loading-Q').removeClass('hidden');
-	m_downloaded_historical_streamflow = true;
+function get_forecast_percent(watershed, subbasin, comid, startdate) {
+    $('#mytable').addClass('hidden');
     $.ajax({
-        url: 'get-simulated-data',
+        url: 'forecastpercent/',
         type: 'GET',
         data: {
+            'comid': comid,
             'watershed': watershed,
             'subbasin': subbasin,
-            'streamcomid': streamcomid,
-            'stationcode':stationcode,
-            'stationname': stationname
+            'startdate': startdate
         },
         error: function() {
-            $('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the simulated data</strong></p>');
+            $('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the forecast table</strong></p>');
             $('#info').removeClass('hidden');
 
-            setTimeout(function () {
+            setTimeout(function() {
                 $('#info').addClass('hidden')
             }, 5000);
         },
-        success: function (data) {
-            if (!data.error) {
-                $('#simulated-loading-Q').addClass('hidden');
-                $('#dates').removeClass('hidden');
-//                $('#obsdates').removeClass('hidden');
-                $loading.addClass('hidden');
-                $('#simulated-chart-Q').removeClass('hidden');
-                $('#simulated-chart-Q').html(data);
+        success: function(data) {
+            $("#tbody").empty()
+            var tbody = document.getElementById('tbody');
 
-                //resize main graph
-                Plotly.Plots.resize($("#simulated-chart-Q .js-plotly-plot")[0]);
+            var columNames = {
+                'two': 'Percent Exceedance (2-yr)',
+                'ten': 'Percent Exceedance (10-yr)',
+                'twenty': 'Percent Exceedance (20-yr)',
+            };
 
-                var params = {
-                    watershed: watershed,
-                	subbasin: subbasin,
-                	streamcomid: streamcomid,
-                	stationcode:stationcode,
-                	stationname: stationname
-                };
+            for (var object1 in data) {
+                if (object1 == "dates") {
+                    cellcolor = ""
+                } else if (object1 == "two") {
+                    cellcolor = "yellow"
+                } else if (object1 == "ten") {
+                    cellcolor = "red"
+                } else if (object1 == "twenty") {
+                    cellcolor = "purple"
+                }
+                if (object1 == "percdates") {
+                    var tr = "<tr id=" + object1.toString() + "><th>Dates</th>";
+                    for (var value1 in data[object1]) {
+                        tr += "<th>" + data[object1][value1].toString() + "</th>"
+                    }
+                    tr += "</tr>";
+                    tbody.innerHTML += tr;
+                } else {
+                    var tr = "<tr id=" + object1.toString() + "><td>" + columNames[object1.toString()] + "</td>";
+                    for (var value1 in data[object1]) {
+                        if (parseInt(data[object1][value1]) == 0) {
+                            tr += "<td class=" + cellcolor + "zero>" + data[object1][value1].toString() + "</td>"
+                        } else if (parseInt(data[object1][value1]) <= 20) {
+                            tr += "<td class=" + cellcolor + "twenty>" + data[object1][value1].toString() + "</td>"
+                        } else if (parseInt(data[object1][value1]) <= 40) {
+                            tr += "<td class=" + cellcolor + "fourty>" + data[object1][value1].toString() + "</td>"
+                        } else if (parseInt(data[object1][value1]) <= 60) {
+                            tr += "<td class=" + cellcolor + "sixty>" + data[object1][value1].toString() + "</td>"
+                        } else if (parseInt(data[object1][value1]) <= 80) {
+                            tr += "<td class=" + cellcolor + "eighty>" + data[object1][value1].toString() + "</td>"
+                        } else {
+                            tr += "<td class=" + cellcolor + "hundred>" + data[object1][value1].toString() + "</td>"
+                        }
+                    }
+                    tr += "</tr>";
+                    tbody.innerHTML += tr;
+                }
+            }
 
-                $('#submit-download-simulated-discharge').attr({
-                    target: '_blank',
-                    href: 'get-simulated-discharge-csv?' + jQuery.param(params)
-                });
+            $("#twenty").prependTo("#mytable");
+            $("#ten").prependTo("#mytable");
+            $("#two").prependTo("#mytable");
+            $("#percdates").prependTo("#mytable");
+            $('#mytable').removeClass('hidden');
+        }
 
-                $('#download_simulated_discharge').removeClass('hidden');
+    })
+}
 
-           		 } else if (data.error) {
-           		 	$('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the Simulated Data</strong></p>');
-           		 	$('#info').removeClass('hidden');
-
-           		 	setTimeout(function() {
-           		 		$('#info').addClass('hidden')
-           		 	}, 5000);
-           		 } else {
-           		 	$('#info').html('<p><strong>An unexplainable error occurred.</strong></p>').removeClass('hidden');
-           		 }
-       		}
-    });
-};
-
-function get_hydrographs (watershed, subbasin, streamcomid, stationcode, stationname) {
-	$('#hydrographs-loading').removeClass('hidden');
-	m_downloaded_historical_streamflow = true;
-    $.ajax({
-        url: 'get-hydrographs',
-        type: 'GET',
-        data: {
-            'watershed': watershed,
-            'subbasin': subbasin,
-            'streamcomid': streamcomid,
-            'stationcode': stationcode,
-            'stationname': stationname
-        },
-        error: function() {
-            $('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the data</strong></p>');
-            $('#info').removeClass('hidden');
-
-            setTimeout(function () {
-                $('#info').addClass('hidden')
-            }, 5000);
-        },
-        success: function (data) {
-            if (!data.error) {
-                $('#hydrographs-loading').addClass('hidden');
-                $('#dates').removeClass('hidden');
-//                $('#obsdates').removeClass('hidden');
-                $loading.addClass('hidden');
-                $('#hydrographs-chart').removeClass('hidden');
-                $('#hydrographs-chart').html(data);
-
-                //resize main graph
-                Plotly.Plots.resize($("#hydrographs-chart .js-plotly-plot")[0]);
-
-           		 } else if (data.error) {
-           		 	$('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the Data</strong></p>');
-           		 	$('#info').removeClass('hidden');
-
-           		 	setTimeout(function() {
-           		 		$('#info').addClass('hidden')
-           		 	}, 5000);
-           		 } else {
-           		 	$('#info').html('<p><strong>An unexplainable error occurred.</strong></p>').removeClass('hidden');
-           		 }
-       		}
-    });
-};
-
-function get_dailyAverages (watershed, subbasin, streamcomid, stationcode, stationname) {
+function get_dailyAverages (watershed, subbasin, comid) {
 	$('#dailyAverages-loading').removeClass('hidden');
 	m_downloaded_historical_streamflow = true;
     $.ajax({
@@ -265,9 +405,7 @@ function get_dailyAverages (watershed, subbasin, streamcomid, stationcode, stati
         data: {
             'watershed': watershed,
             'subbasin': subbasin,
-            'streamcomid': streamcomid,
-            'stationcode': stationcode,
-            'stationname': stationname
+            'comid': comid
         },
         error: function() {
             $('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the data</strong></p>');
@@ -303,7 +441,7 @@ function get_dailyAverages (watershed, subbasin, streamcomid, stationcode, stati
     });
 };
 
-function get_monthlyAverages (watershed, subbasin, streamcomid, stationcode, stationname) {
+function get_monthlyAverages (watershed, subbasin, comid) {
 	$('#monthlyAverages-loading').removeClass('hidden');
 	m_downloaded_historical_streamflow = true;
     $.ajax({
@@ -312,9 +450,7 @@ function get_monthlyAverages (watershed, subbasin, streamcomid, stationcode, sta
         data: {
             'watershed': watershed,
             'subbasin': subbasin,
-            'streamcomid': streamcomid,
-            'stationcode': stationcode,
-            'stationname': stationname
+            'comid': comid
         },
         error: function() {
             $('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the data</strong></p>');
@@ -350,192 +486,6 @@ function get_monthlyAverages (watershed, subbasin, streamcomid, stationcode, sta
     });
 };
 
-function get_scatterPlot (watershed, subbasin, streamcomid, stationcode, stationname) {
-	$('#scatterPlot-loading').removeClass('hidden');
-	m_downloaded_historical_streamflow = true;
-    $.ajax({
-        url: 'get-scatterPlot',
-        type: 'GET',
-        data: {
-            'watershed': watershed,
-            'subbasin': subbasin,
-            'streamcomid': streamcomid,
-            'stationcode': stationcode,
-            'stationname': stationname
-        },
-        error: function() {
-            $('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the data</strong></p>');
-            $('#info').removeClass('hidden');
-
-            setTimeout(function () {
-                $('#info').addClass('hidden')
-            }, 5000);
-        },
-        success: function (data) {
-            if (!data.error) {
-                $('#scatterPlot-loading').addClass('hidden');
-                $('#dates').removeClass('hidden');
-//                $('#obsdates').removeClass('hidden');
-                $loading.addClass('hidden');
-                $('#scatterPlot-chart').removeClass('hidden');
-                $('#scatterPlot-chart').html(data);
-
-                //resize main graph
-                Plotly.Plots.resize($("#scatterPlot-chart .js-plotly-plot")[0]);
-
-           		 } else if (data.error) {
-           		 	$('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the Data</strong></p>');
-           		 	$('#info').removeClass('hidden');
-
-           		 	setTimeout(function() {
-           		 		$('#info').addClass('hidden')
-           		 	}, 5000);
-           		 } else {
-           		 	$('#info').html('<p><strong>An unexplainable error occurred.</strong></p>').removeClass('hidden');
-           		 }
-       		}
-    });
-};
-
-function get_scatterPlotLogScale (watershed, subbasin, streamcomid, stationcode, stationname) {
-	$('#scatterPlotLogScale-loading').removeClass('hidden');
-	m_downloaded_historical_streamflow = true;
-    $.ajax({
-        url: 'get-scatterPlotLogScale',
-        type: 'GET',
-        data: {
-            'watershed': watershed,
-            'subbasin': subbasin,
-            'streamcomid': streamcomid,
-            'stationcode': stationcode,
-            'stationname': stationname
-        },
-        error: function() {
-            $('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the data</strong></p>');
-            $('#info').removeClass('hidden');
-
-            setTimeout(function () {
-                $('#info').addClass('hidden')
-            }, 5000);
-        },
-        success: function (data) {
-            if (!data.error) {
-                $('#scatterPlotLogScale-loading').addClass('hidden');
-                $('#dates').removeClass('hidden');
-//                $('#obsdates').removeClass('hidden');
-                $loading.addClass('hidden');
-                $('#scatterPlotLogScale-chart').removeClass('hidden');
-                $('#scatterPlotLogScale-chart').html(data);
-
-                //resize main graph
-                Plotly.Plots.resize($("#scatterPlotLogScale-chart .js-plotly-plot")[0]);
-
-           		 } else if (data.error) {
-           		 	$('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the Data</strong></p>');
-           		 	$('#info').removeClass('hidden');
-
-           		 	setTimeout(function() {
-           		 		$('#info').addClass('hidden')
-           		 	}, 5000);
-           		 } else {
-           		 	$('#info').html('<p><strong>An unexplainable error occurred.</strong></p>').removeClass('hidden');
-           		 }
-       		}
-    });
-};
-
-function get_volumeAnalysis (watershed, subbasin, streamcomid, stationcode, stationname) {
-	$('#volumeAnalysis-loading').removeClass('hidden');
-	m_downloaded_historical_streamflow = true;
-    $.ajax({
-        url: 'get-volumeAnalysis',
-        type: 'GET',
-        data: {
-            'watershed': watershed,
-            'subbasin': subbasin,
-            'streamcomid': streamcomid,
-            'stationcode': stationcode,
-            'stationname': stationname
-        },
-        error: function() {
-            $('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the data</strong></p>');
-            $('#info').removeClass('hidden');
-
-            setTimeout(function () {
-                $('#info').addClass('hidden')
-            }, 5000);
-        },
-        success: function (data) {
-            if (!data.error) {
-                $('#volumeAnalysis-loading').addClass('hidden');
-                $('#dates').removeClass('hidden');
-//                $('#obsdates').removeClass('hidden');
-                $loading.addClass('hidden');
-                $('#volumeAnalysis-chart').removeClass('hidden');
-                $('#volumeAnalysis-chart').html(data);
-
-                //resize main graph
-                Plotly.Plots.resize($("#volumeAnalysis-chart .js-plotly-plot")[0]);
-
-           		 } else if (data.error) {
-           		 	$('#info').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the Data</strong></p>');
-           		 	$('#info').removeClass('hidden');
-
-           		 	setTimeout(function() {
-           		 		$('#info').addClass('hidden')
-           		 	}, 5000);
-           		 } else {
-           		 	$('#info').html('<p><strong>An unexplainable error occurred.</strong></p>').removeClass('hidden');
-           		 }
-       		}
-    });
-};
-
-// Ajax for Volume Table
-function createVolumeTable(watershed, subbasin, streamcomid, stationcode, stationname) {
-	$('#volumeAnalysis-loading').removeClass('hidden');
-	m_downloaded_historical_streamflow = true;
-    $.ajax({
-        url : "volume-table-ajax/", // the endpoint
-        type: 'GET',
-        data: {
-            'watershed': watershed,
-            'subbasin': subbasin,
-            'streamcomid': streamcomid,
-            'stationcode': stationcode,
-            'stationname': stationname
-        },
-
-        // handle a successful response
-        success : function(resp) {
-            //console.log(resp);
-            let sim_volume = resp["sim_volume"].toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
-            let obs_volume = resp["obs_volume"].toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
-            $("#volume_table_div").show();
-            $("#volume_table").html(`<table class="table table-hover table-striped">\
-                                        <thead>\
-                                          <tr>\
-                                            <th>Simulated Data Volume (Mm<sup>3</sup>)</th>\
-                                            <th>Observed Data Volume (Mm<sup>3</sup>)</th>\
-                                          </tr>\
-                                        </thead>\
-                                        <tbody>\
-                                          <tr>\
-                                            <td>${sim_volume}</td>\
-                                            <td>${obs_volume}</td>\
-                                          </tr>\
-                                        </tbody>\
-                                      </table>`);
-        },
-
-        // handle a non-successful response
-        error : function(xhr, errmsg, err) {
-            $('#results').html("<div class='alert-box alert radius' data-alert>Oops! We have encountered an error: "+errmsg+".</div>"); // add the error to the dom
-            console.log(xhr.status + ": " + xhr.responseText); // provide a bit more info about the error to the console
-        }
-    });
-}
-
 function map_events() {
 	map.on('pointermove', function(evt) {
 		if (evt.dragging) {
@@ -561,50 +511,39 @@ function map_events() {
 
 			if (wms_url) {
 				$("#obsgraph").modal('show');
-				$('#observed-chart-Q').addClass('hidden');
-				$('#simulated-chart-Q').addClass('hidden');
-				$('#hydrographs-chart').addClass('hidden');
+				$("#tbody").empty()
+				$('#forecast-chart').addClass('hidden');
+				$('#historical-chart').addClass('hidden');
+				$('#fdc-chart').addClass('hidden');
 				$('#dailyAverages-chart').addClass('hidden');
 				$('#monthlyAverages-chart').addClass('hidden');
-				$('#scatterPlot-chart').addClass('hidden');
-				$('#scatterPlotLogScale-chart').addClass('hidden');
-				$('#volumeAnalysis-chart').addClass('hidden');
-				$('#observed-loading-Q').removeClass('hidden');
-				$('#simulated-loading-Q').removeClass('hidden');
-				$('#hydrographs-loading').removeClass('hidden');
-				$('#dailyAverages-loading').removeClass('hidden');
-				$('#monthlyAverages-loading').removeClass('hidden');
-				$('#scatterPlot-loading').removeClass('hidden');
-				$('#scatterPlotLogScale-loading').removeClass('hidden');
-				$('#volumeAnalysis-loading').removeClass('hidden');
+				$('#forecast-loading').removeClass('hidden');
+				$('#historical-loading').removeClass('hidden');
+				$('#fdc-loading').removeClass('hidden');
 				$("#station-info").empty()
-				$('#download_observed_discharge').addClass('hidden');
-                $('#download_simulated_discharge').addClass('hidden');
+				$('#download_forecast').addClass('hidden');
+                $('#download_historical').addClass('hidden');
 
 				$.ajax({
 					type: "GET",
 					url: wms_url,
 					dataType: 'json',
 					success: function (result) {
-						var watershed = 'south_america' //OJO buscar como hacerla generica
-		         		var subbasin = 'continental' //OJO buscar como hacerla generica
-		         		stationcode = result["features"][0]["properties"]["ID"];
-		         		stationname = result["features"][0]["properties"]["Name"];
-		         		streamcomid = result["features"][0]["properties"]["COMID"];
-		         		stream = result["features"][0]["properties"]["Stream_Nam"];
-		         		$("#station-info").append('<h3 id="Station-Name-Tab">Current Station: '+ stationname
-                        			+ '</h3><h5 id="Station-Code-Tab">Station Code: '
-                        			+ stationcode + '</h3><h5 id="COMID-Tab">Station COMID: '
-                        			+ streamcomid+ '</h5><h5>Stream: '+ stream);
-                        get_discharge_info (stationcode, stationname);
-                        get_simulated_data (watershed, subbasin, streamcomid, stationcode, stationname);
-                        get_hydrographs (watershed, subbasin, streamcomid, stationcode, stationname);
-                        get_dailyAverages (watershed, subbasin, streamcomid, stationcode, stationname);
-                        get_monthlyAverages (watershed, subbasin, streamcomid, stationcode, stationname);
-                        get_scatterPlot (watershed, subbasin, streamcomid, stationcode, stationname);
-                        get_scatterPlotLogScale (watershed, subbasin, streamcomid, stationcode, stationname);
-                        get_volumeAnalysis (watershed, subbasin, streamcomid, stationcode, stationname);
-                        createVolumeTable(watershed, subbasin, streamcomid, stationcode, stationname);
+						var startdate = '';
+						var watershed = result["features"][0]["properties"]["watershed"];
+		         		var subbasin = result["features"][0]["properties"]["subbasin"];
+		         		var comid = result["features"][0]["properties"]["COMID"];
+		         		$("#station-info").append('<h3 id="Current-Watershed-Tab">Current Watershed: '+ watershed
+                        			+ '</h3><h5 id="Subbasin-Name-Tab">Subbasin Name: '
+                        			+ subbasin + '</h3><h5 id="COMID-Tab">Station COMID: '
+                        			+ comid+ '</h5><h5>Country: '+ 'Somalia');
+                        get_available_dates(watershed, subbasin, comid);
+                        get_time_series(watershed, subbasin, comid, startdate);
+                        get_historic_data(watershed, subbasin, comid, startdate);
+                        get_flow_duration_curve(watershed, subbasin, comid, startdate);
+                        get_forecast_percent(watershed, subbasin, comid, startdate);
+                        get_dailyAverages (watershed, subbasin, comid);
+                        get_monthlyAverages (watershed, subbasin, comid);
                     }
                 });
             }
@@ -616,16 +555,16 @@ function map_events() {
 
 
 function resize_graphs() {
-    $("#observedQ_tab_link").click(function() {
-        Plotly.Plots.resize($("#observed-chart-Q .js-plotly-plot")[0]);
+    $("#forecast_tab_link").click(function() {
+        Plotly.Plots.resize($("#forecast-chart .js-plotly-plot")[0]);
     });
-    $("#simulatedQ_tab_link").click(function() {
+    $("#historical_tab_link").click(function() {
     	if (m_downloaded_historical_streamflow) {
-    		Plotly.Plots.resize($("#simulated-chart-Q .js-plotly-plot")[0]);
+    		Plotly.Plots.resize($("#historical-chart .js-plotly-plot")[0]);
     	}
     });
-    $("#hydrographs_tab_link").click(function() {
-    	Plotly.Plots.resize($("#hydrographs-chart .js-plotly-plot")[0]);
+    $("#fdc_tab_link").click(function() {
+    	Plotly.Plots.resize($("#fdc-chart .js-plotly-plot")[0]);
     });
     $("#dailyAverages_tab_link").click(function() {
     	Plotly.Plots.resize($("#dailyAverages-chart .js-plotly-plot")[0]);
@@ -633,16 +572,6 @@ function resize_graphs() {
     $("#monthlyAverages_tab_link").click(function() {
     	Plotly.Plots.resize($("#monthlyAverages-chart .js-plotly-plot")[0]);
     });
-    $("#scatterPlot_tab_link").click(function() {
-    	Plotly.Plots.resize($("#scatterPlot-chart .js-plotly-plot")[0]);
-    });
-    $("#scatterPlotLogScale_tab_link").click(function() {
-    	Plotly.Plots.resize($("#scatterPlotLogScale-chart .js-plotly-plot")[0]);
-    });
-    $("#volumeAnalysis_tab_link").click(function() {
-    	Plotly.Plots.resize($("#volumeAnalysis-chart .js-plotly-plot")[0]);
-    });
-
 };
 
 $(function() {
@@ -659,127 +588,16 @@ $(function() {
     map_events();
     resize_graphs();
 
-});
-
-// Function for the select2 metric selection tool
-$(document).ready(function() {
-    $('#metric_select2').select2({ width: 'resolve' });
-});
-
-$('#metric_select2').on("select2:close", function(e) { // Display optional parameters
-    //console.log("triggered!");
-    let select_val = $( '#metric_select2' ).val();
-	//console.log(select_val);
-
-    if ( select_val.includes("MASE") ) {
-        $('#mase_param_div').fadeIn()
-    } else {
-        $('#mase_param_div').fadeOut()
-    }
-
-    if ( select_val.includes("d (Mod.)") ) {
-        $('#dmod_param_div').fadeIn()
-    } else {
-        $('#dmod_param_div').fadeOut()
-    }
-
-    if ( select_val.includes("NSE (Mod.)") ) {
-        $('#nse_mod_param_div').fadeIn()
-    } else {
-        $('#nse_mod_param_div').fadeOut()
-    }
-
-    if ( select_val.includes("E1'") ) {
-        $('#lm_eff_param_div').fadeIn()
-    } else {
-        $('#lm_eff_param_div').fadeOut()
-    }
-
-    if ( select_val.includes("D1'") ) {
-        $('#d1_p_param_div').fadeIn()
-    } else {
-        $('#d1_p_param_div').fadeOut()
-    }
-
-    if ( select_val.includes("H6 (MHE)") ) {
-        $('#mean_h6_param_div').fadeIn()
-    } else {
-        $('#mean_h6_param_div').fadeOut()
-    }
-
-    if ( select_val.includes("H6 (MAHE)") ) {
-        $('#mean_abs_H6_param_div').fadeIn()
-    } else {
-        $('#mean_abs_H6_param_div').fadeOut()
-    }
-
-    if ( select_val.includes("H6 (RMSHE)") ) {
-        $('#rms_H6_param_div').fadeIn()
-    } else {
-        $('#rms_H6_param_div').fadeOut()
-    }
-});
-
-// Event handler for the make table button
-$(document).ready(function(){
-
-    $("#make-table").click(function(){
-        //console.log('Make Table Event Triggered');
-        var model = $('#model option:selected').text();
-        var watershed = 'africa' //OJO buscar como hacerla generica
-        var subbasin = 'geoglows' //OJO buscar como hacerla generica
-        var startdate = '';
-        let xName = $("#Station-Name-Tab")
-        let xCode = $("#Station-Code-Tab")
-        let xComid = $("#COMID-Tab")
-        let htmlName = xName.html()
-        let htmlCode = xCode.html()
-        let htmlComid = xComid.html()
-        var arName = htmlName.split(': ')
-        var arCode = htmlCode.split(': ')
-        var arComid = htmlComid.split(': ')
-        let stationname = arName[1];
-        let stationcode = arCode[1];
-        let streamcomid = arComid[1];
-
-        let selected_metrics = $( '#metric_select2' ).val();  // Selected Metrics
-		let additionalParametersNameList = ["mase_m", "dmod_j", "nse_mod_j", "h6_k_MHE", "h6_k_AHE", "h6_k_RMSHE", "lm_x_bar", "d1_p_x_bar"];
-		let additionalParametersValuesList = [];
-
-		let getData = {
-			'watershed': watershed,
-			'subbasin': subbasin,
-			'streamcomid': streamcomid,
-			'stationcode': stationcode,
-			'stationname': stationname,
-			'metrics': selected_metrics,
-		}
-
-		for (let i = 0; i < additionalParametersNameList.length; i++) {
-			metricAbbr = additionalParametersNameList[i];
-			getData[metricAbbr] = $(`#${metricAbbr}`).val();
-		}
-
-		// Creating the table
-		$.ajax({
-			url : "make-table-ajax", // the endpoint
-			type : "GET", // http method
-			data: getData,
-//			contentType : "json",
-
-			// handle a successful response
-			success : function(resp) {
-				$("#metric-table").show();
-				$('#table').html(resp); // Render the Table
-				//console.log(resp)
-				//console.log("success"); // another sanity check
-			},
-
-			// handle a non-successful response
-			error : function(xhr, errmsg, err) {
-				$('#table').html("<div class='alert-box alert radius' data-alert>Oops! We have encountered an error: "+errmsg+".</div>"); // add the error to the dom
-				console.log(xhr.status + ": " + xhr.responseText); // provide a bit more info about the error to the console
-			}
-		});
-	});
+    $('#datesSelect').change(function() { //when date is changed
+        var sel_val = ($('#datesSelect option:selected').val()).split(',');
+        console.log(sel_val)
+        console.log(sel_val[0])
+        var startdate = sel_val[0];
+        var watershed = sel_val[1];
+        var subbasin = sel_val[2];
+        var comid = sel_val[3];
+        $('#forecast-loading').removeClass('hidden');
+        get_time_series(watershed, subbasin, comid, startdate);
+        get_forecast_percent(watershed, subbasin, comid, startdate);
+    });
 });

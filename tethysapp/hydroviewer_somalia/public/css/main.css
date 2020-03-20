@@ -101,3 +101,23 @@
     width: 40%;
     padding: 0 5px 0 5px;
 }
+
+#mytable {
+  font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+#mytable td,
+#mytable th {
+  border: 1px solid #ddd;
+  padding: 8px;
+}
+
+#mytable th {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  text-align: left;
+  background-color: #585757;
+  color: white;
+}
