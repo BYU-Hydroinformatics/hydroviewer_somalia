@@ -1,5 +1,6 @@
 
 var feature_layer;
+var feature_layer2;
 var current_layer;
 var map;
 
@@ -30,7 +31,7 @@ function init_map() {
 			url: 'https://geoserver.hydroshare.org/geoserver/wms',
 			params: { 'LAYERS': 'HS-cc1b93f1d65440aca895787118ed46f1:SomoliaPoints' },
 			serverType: 'geoserver',
-			crossOrigin: 'Anonymous'
+			crossOrigin: 'Anonymous',
 		})
 	});
 	feature_layer = stations;
@@ -40,7 +41,7 @@ function init_map() {
 		layers: [base_layer, streams, stations],
 		view: new ol.View({
 			center: ol.proj.fromLonLat([46.7943, 5.712]),
-			zoom: 5
+			zoom: 6
 		})
 	});
 
