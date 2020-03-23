@@ -19,7 +19,17 @@ function init_map() {
 	var streams = new ol.layer.Image({
 		source: new ol.source.ImageWMS({
 			url: 'https://geoserver.hydroshare.org/geoserver/wms',
-			params: { 'LAYERS': 'HS-cc1b93f1d65440aca895787118ed46f1:Somolia' },
+			params: { 'LAYERS': 'HS-cc1b93f1d65440aca895787118ed46f1:SomaliaRivers' },
+			serverType: 'geoserver',
+			crossOrigin: 'Anonymous'
+		}),
+		opacity: 0.5
+	});
+
+		var major_rivers = new ol.layer.Image({
+		source: new ol.source.ImageWMS({
+			url: 'https://geoserver.hydroshare.org/geoserver/wms',
+			params: { 'LAYERS': 'HS-cc1b93f1d65440aca895787118ed46f1:Jubba_and_Shabelle' },
 			serverType: 'geoserver',
 			crossOrigin: 'Anonymous'
 		}),
@@ -34,7 +44,7 @@ function init_map() {
 			crossOrigin: 'Anonymous',
 		})
 	});
-	feature_layer = stations;
+	feature_layer = streams;
 
 	map = new ol.Map({
 		target: 'map',
